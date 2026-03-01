@@ -1,0 +1,29 @@
+# API keys and secrets
+encryption_data.txt
+.env
+
+# Job data (personal/generated)
+jobs.json
+vurderede_jobs.json
+slettede_jobs.json
+evaluation_log.txt
+last_url.txt
+
+# Debug files
+debug_page*.html
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
