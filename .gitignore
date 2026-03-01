@@ -2,6 +2,9 @@
 encryption_data.txt
 .env
 
+# Personal CV (copy from templates/resume_template.txt; do not commit personal data)
+resume.txt
+
 # Job data (personal/generated)
 jobs.json
 vurderede_jobs.json

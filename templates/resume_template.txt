@@ -1,0 +1,59 @@
+# Resume Template — replace this file with your own CV content!
+#
+# TODO: Copy this file to resume.txt and replace ALL placeholder text below
+#       with your real information before running job_evaluator_10.py.
+#
+# This file is committed to the repository as an example structure.
+# Your real resume.txt should NOT be committed if it contains personal details.
+
+[YOUR NAME]
+[Your City, Country] | [your@email.com] | [LinkedIn or portfolio URL]
+
+---
+
+## Summary
+
+I am an enthusiastic and curious professional with experience in [YOUR FIELD].
+I enjoy solving complex problems, working in teams, and continuously learning new skills.
+Currently looking for new opportunities in [TARGET ROLE / INDUSTRY].
+
+---
+
+## Work Experience
+
+### [Job Title] — [Company Name], [City]
+[Start Year] – [End Year or "Present"]
+- [Key responsibility or achievement]
+- [Key responsibility or achievement]
+- [Key responsibility or achievement]
+
+### [Job Title] — [Company Name], [City]
+[Start Year] – [End Year]
+- [Key responsibility or achievement]
+- [Key responsibility or achievement]
+
+---
+
+## Education
+
+### [Degree] in [Field of Study]
+[University / Institution], [Year of Graduation]
+
+---
+
+## Skills
+
+- Programming: [e.g. Python, JavaScript, SQL]
+- Tools: [e.g. Git, Docker, VS Code]
+- Languages: [e.g. Danish (native), English (fluent)]
+
+---
+
+## Interests
+
+[Brief description of professional interests relevant to your job search]
+
+---
+
+# NOTE: Remove this comment block and replace all [bracketed placeholders]
+# with your real information before running the evaluator.
