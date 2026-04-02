@@ -365,5 +365,74 @@ if ($route === 'analyze' && $method === 'POST') {
     json_ok(['analysis' => $text]);
 }
 
+// ── Shared scraped pool: fetch ────────────────────────────────────────────
+// Returns all non-expired pool entries. Also purges jobs older than 40 days.
+if ($route === 'pool' && $method === 'GET') {
+    require_auth($db);
+    $cutoff = now_ms() - (40 * 24 * 60 * 60 * 1000);
+    $db->prepare('DELETE FROM scraped_pool WHERE last_seen_at < ?')->execute([$cutoff]);
+    $s = $db->prepare('SELECT * FROM scraped_pool ORDER BY last_seen_at DESC');
+    $s->execute();
+    json_ok(['jobs' => $s->fetchAll()]);
+}
+
+// ── Shared scraped pool: import ────────────────────────────────────────────
+// Merges freshly-scraped jobs into the shared pool (all users contribute,
+// all users benefit). Purges entries unseen for more than 40 days.
+// Returns the full updated pool so the caller can display it immediately.
+if ($route === 'pool/import' && $method === 'POST') {
+    require_auth($db);
+    $b    = body();
+    $jobs = $b['jobs'] ?? [];
+
+    if (!is_array($jobs))      json_err('jobs must be an array');
+    if (count($jobs) > 500)    json_err('Too many jobs in one import (max 500)');
+
+    $now   = now_ms();
+    $added = 0;
+
+    $stmtCheck  = $db->prepare('SELECT id FROM scraped_pool WHERE url = ?');
+    $stmtInsert = $db->prepare(
+        'INSERT INTO scraped_pool (id, url, title, company, location, description, first_seen_at, last_seen_at)
+         VALUES (?,?,?,?,?,?,?,?)'
+    );
+    $stmtUpdate = $db->prepare(
+        'UPDATE scraped_pool
+         SET title = ?, company = ?, location = ?,
+             description = CASE WHEN description = \'\' THEN ? ELSE description END,
+             last_seen_at = ?
+         WHERE url = ?'
+    );
+
+    foreach ($jobs as $j) {
+        $url  = substr(trim($j['url']         ?? ''), 0, 2000);
+        if (!$url) continue;
+
+        $title   = substr(trim($j['title']       ?? ''), 0, 500);
+        $company = substr(trim($j['company']     ?? ''), 0, 200);
+        $loc     = substr(trim($j['location']    ?? ''), 0, 200);
+        $desc    = substr(trim($j['description'] ?? ''), 0, 5000);
+
+        $stmtCheck->execute([$url]);
+        if ($stmtCheck->fetch()) {
+            $stmtUpdate->execute([$title, $company, $loc, $desc, $now, $url]);
+        } else {
+            $stmtInsert->execute([uuid_v4(), $url, $title, $company, $loc, $desc, $now, $now]);
+            $added++;
+        }
+    }
+
+    // Purge entries unseen for more than 40 days
+    $cutoff = $now - (40 * 24 * 60 * 60 * 1000);
+    $db->prepare('DELETE FROM scraped_pool WHERE last_seen_at < ?')->execute([$cutoff]);
+
+    // Return the full updated pool
+    $s = $db->prepare('SELECT * FROM scraped_pool ORDER BY last_seen_at DESC');
+    $s->execute();
+    $pool = $s->fetchAll();
+
+    json_ok(['added' => $added, 'total' => count($pool), 'jobs' => $pool]);
+}
+
 // ── 404 ────────────────────────────────────────────────────────────────────
 json_err('Unknown route: ' . $route, 404);

@@ -18,6 +18,15 @@ All jobindex.dk traffic must come from your own computer.
 
 **Requirements:** Python 3.8 or newer.
 
+### Option A – GUI installer (recommended)
+
+1. Download all files from **Settings → Download lokal scraper** in the web app
+2. Double-click **`install.py`**
+3. Choose an installation folder and click **Installer**
+4. Start the scraper by double-clicking **`start.bat`** (Windows) or running **`./start.sh`** (Mac/Linux)
+
+### Option B – Manual
+
 ```bash
 # 1. Open a terminal / command prompt in this folder
 cd local_scraper
@@ -56,12 +65,7 @@ Default port is **7474**. To use a different port:
 python helper.py 8080
 ```
 
-Then update `LOCAL_SCRAPER_URL` in `public/js/config.js`:
-```js
-const LOCAL_SCRAPER_URL = 'http://localhost:8080';
-```
-
-Or change it in the **Indstillinger** panel of the web app (saved in your browser).
+Then update the port under **Indstillinger → Lokal scraper** in the web app.
 
 ---
 
@@ -83,3 +87,4 @@ After scraping, the browser app sends only the extracted job data (title, compan
 The helper works with **standard Python only** (no pip install needed),  
 but it will use a simpler regex-based parser which may miss some job cards.  
 For best results, install `requests` and `beautifulsoup4`.
+
