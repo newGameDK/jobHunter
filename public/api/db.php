@@ -65,6 +65,17 @@ CREATE TABLE IF NOT EXISTS jobs (
   updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 );
+
+CREATE TABLE IF NOT EXISTS scraped_pool (
+  id           TEXT PRIMARY KEY,
+  url          TEXT UNIQUE NOT NULL,
+  title        TEXT NOT NULL DEFAULT '',
+  company      TEXT NOT NULL DEFAULT '',
+  location     TEXT NOT NULL DEFAULT '',
+  description  TEXT NOT NULL DEFAULT '',
+  first_seen_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+  last_seen_at  INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+);
 ");
 
 // Migrations: add columns to existing databases

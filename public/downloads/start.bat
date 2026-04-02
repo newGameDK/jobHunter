@@ -10,7 +10,7 @@ echo.
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
     echo FEJL: Python er ikke installeret!
-    echo Hent Python 3 fra  https://python.org
+    echo Hent Python 3 fra  https://www.python.org
     echo Sorg for at markere "Add Python to PATH" under installationen.
     pause
     exit /b 1

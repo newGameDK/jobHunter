@@ -146,6 +146,16 @@ function setupSearch() {
     document.getElementById('importAllBtn').addEventListener('click', importAll);
 }
 
+async function loadPool() {
+    try {
+        const data = await apiFetch('/api/pool');
+        const jobs = data.jobs || [];
+        if (!jobs.length) return;
+        searchResults = jobs;
+        renderSearchResults(jobs, undefined, jobs.length);
+    } catch { /* non-critical */ }
+}
+
 function onSearchPanelOpen() {
     // Restore last URL from settings
     const urlInput = document.getElementById('searchUrl');
@@ -153,6 +163,8 @@ function onSearchPanelOpen() {
         urlInput.value = userSettings.last_url;
     }
     checkLocalScraper();
+    // Pre-populate results from the shared pool so users see previous scrapes immediately
+    loadPool();
 }
 
 async function checkLocalScraper() {
@@ -221,8 +233,26 @@ async function doScrape() {
         const data = await res.json();
 
         if (!res.ok) throw new Error(data.error || 'Scraper fejl');
-        searchResults = data.jobs || [];
-        renderSearchResults(searchResults);
+        const freshJobs = data.jobs || [];
+
+        // Merge fresh results into the shared pool and get the full pool back
+        progText.textContent = 'Gemmer i delt pulje…';
+        let poolJobs = freshJobs;
+        let addedCount = freshJobs.length;
+        let totalCount = freshJobs.length;
+        try {
+            const poolData = await apiFetch('/api/pool/import', {
+                method: 'POST',
+                body: JSON.stringify({ jobs: freshJobs }),
+            });
+            // Normalise pool entries (pool uses same field names as scraper)
+            poolJobs   = poolData.jobs  || freshJobs;
+            addedCount = poolData.added ?? freshJobs.length;
+            totalCount = poolData.total ?? freshJobs.length;
+        } catch { /* non-critical – fall back to fresh results only */ }
+
+        searchResults = poolJobs;
+        renderSearchResults(searchResults, addedCount, totalCount);
     } catch (err) {
         toast('Scraper fejl: ' + err.message, 4000);
         await checkLocalScraper();
@@ -232,7 +262,7 @@ async function doScrape() {
     }
 }
 
-function renderSearchResults(jobs) {
+function renderSearchResults(jobs, addedCount, totalCount) {
     const grid    = document.getElementById('searchResults');
     const header  = document.getElementById('searchResultsHeader');
     const countEl = document.getElementById('resultsCount');
@@ -244,7 +274,16 @@ function renderSearchResults(jobs) {
     }
 
     header.style.display = 'flex';
-    countEl.textContent  = `${jobs.length} jobs fundet`;
+    if (addedCount !== undefined && totalCount !== undefined) {
+        const fromPool = totalCount - addedCount;
+        if (fromPool > 0) {
+            countEl.textContent = `${totalCount} jobs i alt · ${addedCount} nye · ${fromPool} fra delt pulje`;
+        } else {
+            countEl.textContent = `${totalCount} jobs fundet`;
+        }
+    } else {
+        countEl.textContent = `${jobs.length} jobs`;
+    }
 
     grid.innerHTML = jobs.map((j, i) => `
         <div class="job-card" data-idx="${i}">
