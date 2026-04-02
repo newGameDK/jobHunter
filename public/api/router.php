@@ -479,5 +479,227 @@ if ($route === 'pool/import' && $method === 'POST') {
     json_ok(['added' => $added, 'total' => count($pool), 'jobs' => $pool]);
 }
 
+// ── Admin: helpers ────────────────────────────────────────────────────────
+function require_admin($db) {
+    $user = get_session_user($db);
+    if (!$user) json_err('Not authenticated', 401);
+    if (empty($user['is_admin'])) json_err('Admin access required', 403);
+    return $user;
+}
+
+// Copy files from $src to $dst recursively, skipping any destination path
+// that resolves to $skipDstPath (the live database directory).
+function copy_update_files($src, $dst, $skipDstPath) {
+    $copied = 0;
+    $failed = 0;
+    if (!is_dir($dst)) mkdir($dst, 0755, true);
+    foreach (scandir($src) as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $srcPath = $src . '/' . $item;
+        $dstPath = $dst . '/' . $item;
+        // Protect the data directory – resolve symlinks and compare canonical paths
+        $resolvedDst  = is_dir($dstPath)  ? realpath($dstPath)  : realpath($dst) . '/' . $item;
+        $resolvedSkip = $skipDstPath;
+        if ($resolvedDst === $resolvedSkip) continue;
+        if (is_dir($srcPath)) {
+            [$c, $f] = copy_update_files($srcPath, $dstPath, $skipDstPath);
+            $copied += $c;
+            $failed += $f;
+        } else {
+            copy($srcPath, $dstPath) ? $copied++ : $failed++;
+        }
+    }
+    return [$copied, $failed];
+}
+
+function delete_dir_recursive($dir) {
+    if (!is_dir($dir)) return;
+    foreach (scandir($dir) as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $path = $dir . '/' . $item;
+        is_dir($path) ? delete_dir_recursive($path) : @unlink($path);
+    }
+    @rmdir($dir);
+}
+
+// ── Admin: Status ─────────────────────────────────────────────────────────
+if ($route === 'admin/status' && $method === 'GET') {
+    $user = require_auth($db);
+
+    $adminCount   = (int)$db->query('SELECT COUNT(*) FROM users WHERE is_admin = 1')->fetchColumn();
+    $adminClaimed = $adminCount > 0;
+
+    $result = [
+        'admin_claimed' => $adminClaimed,
+        'is_admin'      => (bool)($user['is_admin'] ?? false),
+    ];
+
+    if (!empty($user['is_admin'])) {
+        $result['user_count'] = (int)$db->query('SELECT COUNT(*) FROM users')->fetchColumn();
+
+        $versionFile = dirname(__DIR__) . '/version.json';
+        $currentVersion = '?';
+        if (file_exists($versionFile)) {
+            $vj = json_decode(file_get_contents($versionFile), true);
+            $currentVersion = $vj['version'] ?? '?';
+        }
+        $result['current_version'] = $currentVersion;
+    }
+
+    json_ok($result);
+}
+
+// ── Admin: Claim admin role ────────────────────────────────────────────────
+// The very first user to POST this endpoint becomes the sole administrator.
+if ($route === 'admin/claim' && $method === 'POST') {
+    $user = require_auth($db);
+
+    // Use an exclusive transaction to prevent a race between concurrent requests
+    $db->exec('BEGIN EXCLUSIVE');
+    $adminCount = (int)$db->query('SELECT COUNT(*) FROM users WHERE is_admin = 1')->fetchColumn();
+    if ($adminCount > 0) {
+        $db->exec('ROLLBACK');
+        json_err('Admin role is already claimed', 403);
+    }
+    $db->prepare('UPDATE users SET is_admin = 1 WHERE id = ?')->execute([$user['id']]);
+    $db->exec('COMMIT');
+
+    $s = $db->prepare('SELECT * FROM users WHERE id = ?');
+    $s->execute([$user['id']]);
+    json_ok(['user' => sanitize_user($s->fetch())]);
+}
+
+// ── Admin: Check for update ────────────────────────────────────────────────
+if ($route === 'admin/check-update' && $method === 'GET') {
+    require_admin($db);
+
+    if (!extension_loaded('curl')) json_err('cURL extension is not available', 503);
+
+    $versionFile    = dirname(__DIR__) . '/version.json';
+    $currentVersion = '0.0.0';
+    if (file_exists($versionFile)) {
+        $vj = json_decode(file_get_contents($versionFile), true);
+        $currentVersion = $vj['version'] ?? '0.0.0';
+    }
+
+    $ch = curl_init('https://raw.githubusercontent.com/newGameDK/jobHunter/main/public/version.json');
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_TIMEOUT        => 10,
+        CURLOPT_USERAGENT      => 'JobHunter-Updater/1.0',
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr || $httpCode !== 200) {
+        json_err('Could not reach GitHub: ' . ($curlErr ?: 'HTTP ' . $httpCode), 502);
+    }
+
+    $remoteData    = json_decode($response, true);
+    $latestVersion = $remoteData['version'] ?? '0.0.0';
+
+    json_ok([
+        'current_version'  => $currentVersion,
+        'latest_version'   => $latestVersion,
+        'update_available' => version_compare($latestVersion, $currentVersion, '>'),
+    ]);
+}
+
+// ── Admin: Apply update ────────────────────────────────────────────────────
+// Downloads the main branch ZIP from GitHub, extracts it, and copies all
+// files to the web root – but NEVER touches api/data/ (the live database).
+if ($route === 'admin/update' && $method === 'POST') {
+    require_admin($db);
+
+    if (!extension_loaded('curl'))   json_err('cURL extension is not available', 503);
+    if (!class_exists('ZipArchive')) json_err('ZipArchive extension is not available', 503);
+
+    $webRoot     = dirname(__DIR__);
+    // Resolve the protected data path to its canonical form to prevent symlink bypasses
+    $skipDstPath = realpath(__DIR__ . '/data') ?: ($webRoot . '/api/data');
+
+    // Download ZIP from GitHub (URL is hardcoded; CURLOPT_SSL_VERIFYPEER ensures
+    // transport integrity – a full GPG signature check would require distributing a
+    // public key and is outside the scope of this self-hosted setup).
+    $zipUrl = 'https://github.com/newGameDK/jobHunter/archive/refs/heads/main.zip';
+    $ch = curl_init($zipUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT        => 120,
+        CURLOPT_USERAGENT      => 'JobHunter-Updater/1.0',
+        CURLOPT_SSL_VERIFYPEER => true,
+    ]);
+    $zipData  = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $curlErr  = curl_error($ch);
+    curl_close($ch);
+
+    if ($curlErr || $httpCode !== 200 || !$zipData) {
+        json_err('Failed to download update: ' . ($curlErr ?: 'HTTP ' . $httpCode), 502);
+    }
+
+    // Use unpredictable names to prevent temp-file race conditions
+    $tmpZip = tempnam(sys_get_temp_dir(), 'jh_upd_');
+    if ($tmpZip === false || file_put_contents($tmpZip, $zipData) === false) {
+        json_err('Failed to save downloaded archive', 500);
+    }
+    unset($zipData); // free memory
+
+    $tmpDir = sys_get_temp_dir() . '/jh_extract_' . bin2hex(random_bytes(8));
+    $zip    = new ZipArchive();
+    if ($zip->open($tmpZip) !== true) {
+        @unlink($tmpZip);
+        json_err('Failed to open downloaded archive', 500);
+    }
+
+    // Validate all entries for path-traversal sequences before extracting
+    for ($i = 0; $i < $zip->numFiles; $i++) {
+        $name = $zip->getNameIndex($i);
+        if ($name === false) continue;
+        // Reject entries that contain traversal sequences or null bytes
+        if (strpos($name, '..') !== false || strpos($name, "\0") !== false) {
+            $zip->close();
+            @unlink($tmpZip);
+            json_err('Archive contains unsafe paths', 400);
+        }
+    }
+
+    $zip->extractTo($tmpDir);
+    $zip->close();
+    @unlink($tmpZip);
+
+    // The GitHub archive contains a single top-level folder (e.g. jobHunter-main/)
+    // with a public/ subdirectory inside. Find it.
+    $extractedPublic = null;
+    foreach (scandir($tmpDir) as $item) {
+        if ($item === '.' || $item === '..') continue;
+        $candidate = $tmpDir . '/' . $item . '/public';
+        if (is_dir($candidate)) {
+            $extractedPublic = $candidate;
+            break;
+        }
+    }
+
+    if (!$extractedPublic) {
+        delete_dir_recursive($tmpDir);
+        json_err('Unexpected archive structure – could not locate public/ folder', 500);
+    }
+
+    [$copied, $failed] = copy_update_files($extractedPublic, $webRoot, $skipDstPath);
+    delete_dir_recursive($tmpDir);
+
+    $newVersion = '?';
+    if (file_exists($webRoot . '/version.json')) {
+        $vj = json_decode(file_get_contents($webRoot . '/version.json'), true);
+        $newVersion = $vj['version'] ?? '?';
+    }
+
+    json_ok(['copied' => $copied, 'failed' => $failed, 'version' => $newVersion]);
+}
+
 // ── 404 ────────────────────────────────────────────────────────────────────
 json_err('Unknown route: ' . $route, 404);

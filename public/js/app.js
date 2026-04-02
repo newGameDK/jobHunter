@@ -11,6 +11,7 @@ let savedJobs        = [];
 let searchResults    = [];
 let activePanel      = 'dashboard';
 let activeModalJob   = null;
+let adminStatus      = { admin_claimed: false, is_admin: false };
 
 // Allow the stored scraper URL to be overridden in settings
 let scraperUrl = (() => {
@@ -88,6 +89,11 @@ async function apiFetch(path, opts = {}) {
     setupSearch();
     setupSettings();
     setupModal();
+
+    // Admin panel (load status then set up UI)
+    await loadAdminStatus();
+    setupAdmin();
+    updateAdminNav();
 
     showPanel('dashboard');
 })();
@@ -677,4 +683,116 @@ function esc(str) {
 
 function statusLabel(s) {
     return { new: 'Ny', saved: 'Favorit', applied: 'Ansøgt', rejected: 'Afvist' }[s] || s;
+}
+
+// ── Admin ──────────────────────────────────────────────────────────────────
+async function loadAdminStatus() {
+    try {
+        const d = await apiFetch('/api/admin/status');
+        adminStatus = d;
+        if (d.is_admin !== undefined) currentUser.is_admin = d.is_admin;
+    } catch {
+        adminStatus = { admin_claimed: false, is_admin: false };
+    }
+}
+
+function updateAdminNav() {
+    const navItem = document.getElementById('nav-admin');
+    if (!navItem) return;
+    navItem.style.display = (currentUser.is_admin || !adminStatus.admin_claimed) ? '' : 'none';
+}
+
+function setupAdmin() {
+    const claimSection = document.getElementById('adminClaimSection');
+    const adminPanel   = document.getElementById('adminPanel');
+    if (!claimSection || !adminPanel) return;
+
+    if (currentUser.is_admin) {
+        claimSection.style.display = 'none';
+        adminPanel.style.display   = '';
+
+        document.getElementById('adminUserCount').textContent      = adminStatus.user_count ?? '–';
+        document.getElementById('adminCurrentVersion').textContent = adminStatus.current_version ?? '–';
+
+        document.getElementById('checkUpdateBtn').onclick = checkForUpdate;
+        document.getElementById('doUpdateBtn').onclick    = doUpdate;
+
+    } else if (!adminStatus.admin_claimed) {
+        claimSection.style.display = '';
+        adminPanel.style.display   = 'none';
+
+        document.getElementById('claimAdminBtn').onclick = claimAdmin;
+
+    } else {
+        claimSection.style.display = 'none';
+        adminPanel.style.display   = 'none';
+    }
+}
+
+async function claimAdmin() {
+    const btn = document.getElementById('claimAdminBtn');
+    btn.disabled = true;
+    try {
+        const d = await apiFetch('/api/admin/claim', { method: 'POST' });
+        currentUser = d.user;
+        toast('Du er nu administrator!');
+        await loadAdminStatus();
+        setupAdmin();
+        updateAdminNav();
+    } catch (e) {
+        toast('Fejl: ' + e.message, 4000);
+        btn.disabled = false;
+    }
+}
+
+async function checkForUpdate() {
+    const btn       = document.getElementById('checkUpdateBtn');
+    const statusDiv = document.getElementById('adminUpdateStatus');
+    const doBtn     = document.getElementById('doUpdateBtn');
+
+    btn.disabled     = true;
+    btn.textContent  = 'Tjekker…';
+    statusDiv.style.display = 'none';
+    doBtn.style.display     = 'none';
+
+    try {
+        const d = await apiFetch('/api/admin/check-update');
+        statusDiv.style.display = '';
+        if (d.update_available) {
+            statusDiv.className = 'admin-update-status update-available';
+            statusDiv.textContent = `Ny version tilgængelig: ${d.latest_version} (du har ${d.current_version})`;
+            doBtn.style.display   = '';
+            doBtn.dataset.version = d.latest_version;
+        } else {
+            statusDiv.className   = 'admin-update-status up-to-date';
+            statusDiv.textContent = `Du har den nyeste version (${d.current_version})`;
+        }
+    } catch (e) {
+        statusDiv.style.display = '';
+        statusDiv.className     = 'admin-update-status update-error';
+        statusDiv.textContent   = 'Fejl ved tjek: ' + e.message;
+    } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Tjek for opdatering';
+    }
+}
+
+async function doUpdate() {
+    const btn     = document.getElementById('doUpdateBtn');
+    const version = btn.dataset.version || '';
+
+    if (!confirm(`Installér version ${version}?\n\nSiden genindlæses bagefter. Database og brugerdata bevares.`)) return;
+
+    btn.disabled    = true;
+    btn.textContent = 'Opdaterer…';
+
+    try {
+        await apiFetch('/api/admin/update', { method: 'POST' });
+        toast('Opdatering installeret! Genindlæser…', 3500);
+        setTimeout(() => window.location.reload(), 3500);
+    } catch (e) {
+        toast('Opdatering fejlede: ' + e.message, 5000);
+        btn.disabled    = false;
+        btn.textContent = 'Installér opdatering';
+    }
 }

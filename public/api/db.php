@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS users (
   username TEXT UNIQUE NOT NULL,
   email TEXT UNIQUE NOT NULL,
   password_hash TEXT NOT NULL,
+  is_admin INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
 );
 
@@ -83,6 +84,7 @@ $migrations = [
     "ALTER TABLE jobs ADD COLUMN gpt_analysis TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE user_settings ADD COLUMN last_url TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE users ADD COLUMN scrape_token TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0",
 ];
 foreach ($migrations as $m) {
     try { $db->exec($m); } catch (Exception $e) { /* column already exists */ }
@@ -108,6 +110,7 @@ function sanitize_user($u) {
         'id'         => $u['id'],
         'username'   => $u['username'],
         'email'      => $u['email'],
+        'is_admin'   => (bool)($u['is_admin'] ?? false),
         'created_at' => (int)$u['created_at'],
     ];
 }
