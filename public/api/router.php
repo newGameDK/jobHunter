@@ -51,6 +51,26 @@ function require_auth($db) {
     return $user;
 }
 
+// Authenticate either by PHP session or by a personal scrape token supplied in
+// the request (query-string ?token= or JSON body "token" field).
+// Only a limited set of import endpoints use this – all other routes require a
+// proper session via require_auth().
+function get_token_user($db) {
+    $token = trim($_GET['token'] ?? (body()['token'] ?? ''));
+    if (!$token || strlen($token) < 16) return null;
+    $s = $db->prepare('SELECT * FROM users WHERE scrape_token = ?');
+    $s->execute([$token]);
+    return $s->fetch() ?: null;
+}
+
+function require_auth_or_token($db) {
+    $user = get_session_user($db);
+    if ($user) return $user;
+    $user = get_token_user($db);
+    if ($user) return $user;
+    json_err('Not authenticated', 401);
+}
+
 // -------------------------------------------------------------------------
 // Routing
 // -------------------------------------------------------------------------
@@ -131,6 +151,27 @@ if ($route === 'auth/logout' && $method === 'POST') {
 if ($route === 'auth/me' && $method === 'GET') {
     $user = require_auth($db);
     json_ok(['user' => sanitize_user($user)]);
+}
+
+// ── Auth: Scrape token – get or generate ─────────────────────────────────
+if ($route === 'auth/scrape-token' && $method === 'GET') {
+    $user = require_auth($db);
+    $token = $user['scrape_token'] ?? '';
+    if ($token === '') {
+        $token = bin2hex(random_bytes(16));
+        $db->prepare('UPDATE users SET scrape_token = ? WHERE id = ?')
+           ->execute([$token, $user['id']]);
+    }
+    json_ok(['token' => $token]);
+}
+
+// ── Auth: Scrape token – regenerate ──────────────────────────────────────
+if ($route === 'auth/scrape-token' && $method === 'POST') {
+    $user  = require_auth($db);
+    $token = bin2hex(random_bytes(16));
+    $db->prepare('UPDATE users SET scrape_token = ? WHERE id = ?')
+       ->execute([$token, $user['id']]);
+    json_ok(['token' => $token]);
 }
 
 // ── Settings: Get ────────────────────────────────────────────────────────
@@ -248,12 +289,14 @@ if ($route === 'jobs/delete' && $method === 'POST') {
     json_ok();
 }
 
-// ── Import jobs (sent from the user's local scraper or browser) ────────────
+// ── Import jobs (sent from the user's local scraper or browser bookmarklet) ─
 // The server NEVER scrapes jobindex.dk directly. All scraping happens on the
-// user's own PC via the local companion app (local_scraper/helper.py).
-// This endpoint only receives already-parsed job data and stores it.
+// user's own PC via the local companion app (local_scraper/helper.py) or the
+// browser bookmarklet. This endpoint only receives already-parsed job data.
+// Accepts both session auth and personal scrape-token auth so the bookmarklet
+// can POST cross-origin without needing a session cookie.
 if ($route === 'import_jobs' && $method === 'POST') {
-    $user = require_auth($db);
+    $user = require_auth_or_token($db);
     $b    = body();
     $jobs = $b['jobs'] ?? [];
 
@@ -380,8 +423,9 @@ if ($route === 'pool' && $method === 'GET') {
 // Merges freshly-scraped jobs into the shared pool (all users contribute,
 // all users benefit). Purges entries unseen for more than 40 days.
 // Returns the full updated pool so the caller can display it immediately.
+// Accepts both session auth and personal scrape-token auth.
 if ($route === 'pool/import' && $method === 'POST') {
-    require_auth($db);
+    require_auth_or_token($db);
     $b    = body();
     $jobs = $b['jobs'] ?? [];
 
