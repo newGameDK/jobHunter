@@ -52,12 +52,13 @@ function require_auth($db) {
 }
 
 // Authenticate either by PHP session or by a personal scrape token supplied in
-// the request (query-string ?token= or JSON body "token" field).
+// the POST body ("token" field). Tokens are never accepted from URL parameters
+// to avoid leaking them in server logs, browser history, or referrer headers.
 // Only a limited set of import endpoints use this – all other routes require a
 // proper session via require_auth().
 function get_token_user($db) {
-    $token = trim($_GET['token'] ?? (body()['token'] ?? ''));
-    if (!$token || strlen($token) < 16) return null;
+    $token = trim(body()['token'] ?? '');
+    if (!$token || strlen($token) < 32) return null;
     $s = $db->prepare('SELECT * FROM users WHERE scrape_token = ?');
     $s->execute([$token]);
     return $s->fetch() ?: null;
@@ -158,7 +159,7 @@ if ($route === 'auth/scrape-token' && $method === 'GET') {
     $user = require_auth($db);
     $token = $user['scrape_token'] ?? '';
     if ($token === '') {
-        $token = bin2hex(random_bytes(16));
+        $token = bin2hex(random_bytes(32));
         $db->prepare('UPDATE users SET scrape_token = ? WHERE id = ?')
            ->execute([$token, $user['id']]);
     }
@@ -168,7 +169,7 @@ if ($route === 'auth/scrape-token' && $method === 'GET') {
 // ── Auth: Scrape token – regenerate ──────────────────────────────────────
 if ($route === 'auth/scrape-token' && $method === 'POST') {
     $user  = require_auth($db);
-    $token = bin2hex(random_bytes(16));
+    $token = bin2hex(random_bytes(32));
     $db->prepare('UPDATE users SET scrape_token = ? WHERE id = ?')
        ->execute([$token, $user['id']]);
     json_ok(['token' => $token]);

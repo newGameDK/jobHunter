@@ -497,11 +497,14 @@ function getApiRouterUrl() {
 
 // Build a javascript: bookmarklet URL that scrapes the current jobindex.dk
 // page and POSTs the results to this server using the user's personal token.
+// The token is sent in the POST body, never in the URL, to avoid leaking it
+// in browser history, server logs, or referrer headers.
 function generateBookmarkletUrl(token, routerUrl) {
     const code = '(function(){'
         + 'var H=' + JSON.stringify(routerUrl) + ';'
         + 'var T=' + JSON.stringify(token) + ';'
-        + 'if(!/jobindex\\.dk/i.test(location.hostname)){alert("K\\xF8r dette p\\xE5 jobindex.dk!");return;}'
+        + 'var hn=location.hostname.toLowerCase();'
+        + 'if(hn!=="www.jobindex.dk"&&hn!=="jobindex.dk"){alert("K\\xF8r dette p\\xE5 jobindex.dk!");return;}'
         + 'var J=[];'
         + 'document.querySelectorAll("article").forEach(function(a){'
         +   'var l=a.querySelector("a[href*=\\"/vis-job/\\"],a[href*=\\"/jobannonce/\\"]");'
@@ -524,10 +527,10 @@ function generateBookmarkletUrl(token, routerUrl) {
         + 'n.style.cssText="position:fixed;top:20px;right:20px;z-index:2147483647;background:#1e40af;color:#fff;padding:16px 24px;border-radius:10px;font:bold 14px/1.5 sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:320px";'
         + 'n.textContent="\\u23F3 JobHunter: Sender "+J.length+" jobs\\u2026";'
         + 'document.body.appendChild(n);'
-        + 'fetch(H+"?_route=import_jobs&token="+encodeURIComponent(T),{'
+        + 'fetch(H+"?_route=import_jobs",{'
         +   'method:"POST",'
         +   'headers:{"Content-Type":"application/json"},'
-        +   'body:JSON.stringify({jobs:J})'
+        +   'body:JSON.stringify({token:T,jobs:J})'
         + '}).then(function(r){return r.json();})'
         + '.then(function(d){'
         +   'n.style.background=d.ok?"#166534":"#991b1b";'
