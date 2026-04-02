@@ -10,7 +10,7 @@ JobHunter består af to dele:
 
 | Del | Beskrivelse | Placering |
 |-----|-------------|-----------|
-| **Webapplikation** | PHP/HTML/JS backend + frontend | Uploades til `public_html/` på din webhost |
+| **Webapplikation** | PHP/HTML/JS backend + frontend | Uploades til `public_html/` (eller en undermappe) på din webhost |
 | **Lokal scraper** | Python-script der kører på din PC | Downloades fra webappen og køres lokalt |
 
 ---
@@ -52,7 +52,8 @@ public_html/
 ```
 
 > **Vigtigt:** Upload *indholdet* af `public/` – ikke selve `public/`-mappen.  
-> Det vil sige at `index.html` skal ligge direkte i `public_html/index.html`.
+> Det vil sige at `index.html` skal ligge direkte i `public_html/index.html`.  
+> Ønsker du at deploye til en undermappe (f.eks. `public_html/jobHunter/`), se afsnittet **Deploying to a subfolder** nedenfor.
 
 ### Trin-for-trin (FTP)
 
@@ -133,6 +134,45 @@ python helper.py 8080
 ```
 
 Opdater derefter porten under **Indstillinger → Lokal scraper** i webappen.
+
+---
+
+## Deploying to a subfolder (e.g. public_html/jobHunter/)
+
+JobHunter supports subfolder deployment **out of the box** — no code changes are needed.
+
+### What to do
+
+Upload the contents of `public/` to a subfolder on your webhost instead of the root:
+
+```
+public_html/
+└── jobHunter/          ← your chosen subfolder name
+    ├── .htaccess
+    ├── index.html
+    ├── app.html
+    ├── version.json
+    ├── css/
+    ├── js/
+    ├── api/
+    └── downloads/
+```
+
+The site will then be accessible at:
+
+```
+https://dit-domæne.dk/jobHunter/
+```
+
+### Why it works without changes
+
+The JavaScript configuration in `js/config.js` uses `API_BASE = '.'`, which is always resolved **relative to the current page URL** by the browser. This means `./api/router.php` is automatically resolved to the correct path regardless of the subfolder depth.
+
+All HTML, CSS and JS asset references are also relative (no leading `/`), so they resolve correctly from any subfolder.
+
+### ⚠ Protect your data folder
+
+When uploading to a subfolder, `api/data/` must still **never** be overwritten during updates — this folder contains your database. Skip it when re-uploading files.
 
 ---
 

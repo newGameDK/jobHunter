@@ -122,7 +122,12 @@ function renderDashboard() {
     const recentEl = document.getElementById('recentJobs');
     const recent   = [...savedJobs].slice(0, 8);
     if (!recent.length) {
-        recentEl.innerHTML = '<p style="color:var(--text-2);font-size:.88rem">Ingen gemte jobs endnu. Søg og gem dine første jobs!</p>';
+        recentEl.innerHTML =
+            '<div class="empty-state">' +
+            '<p>Ingen gemte jobs endnu.</p>' +
+            '<button class="btn btn-primary btn-sm" id="dashboardSearchBtn">Søg dine første jobs →</button>' +
+            '</div>';
+        document.getElementById('dashboardSearchBtn').addEventListener('click', () => showPanel('search'));
         return;
     }
     recentEl.innerHTML = recent.map(j => `
@@ -144,6 +149,7 @@ function setupSearch() {
     document.getElementById('recheckScraperBtn').addEventListener('click', checkLocalScraper);
     document.getElementById('scrapeBtn').addEventListener('click', doScrape);
     document.getElementById('importAllBtn').addEventListener('click', importAll);
+    document.getElementById('gotoDownloadBtn').addEventListener('click', () => showPanel('settings'));
 }
 
 async function loadPool() {
