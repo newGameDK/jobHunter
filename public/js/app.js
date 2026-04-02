@@ -490,9 +490,81 @@ async function loadSettings() {
     } catch { /* ignore */ }
 }
 
+// Build the absolute URL to the PHP router, regardless of subdirectory depth.
+function getApiRouterUrl() {
+    return new URL('./api/router.php', window.location.href).href;
+}
+
+// Build a javascript: bookmarklet URL that scrapes the current jobindex.dk
+// page and POSTs the results to this server using the user's personal token.
+// The token is sent in the POST body, never in the URL, to avoid leaking it
+// in browser history, server logs, or referrer headers.
+function generateBookmarkletUrl(token, routerUrl) {
+    const code = '(function(){'
+        + 'var H=' + JSON.stringify(routerUrl) + ';'
+        + 'var T=' + JSON.stringify(token) + ';'
+        + 'var hn=location.hostname.toLowerCase();'
+        + 'if(hn!=="www.jobindex.dk"&&hn!=="jobindex.dk"){alert("K\\xF8r dette p\\xE5 jobindex.dk!");return;}'
+        + 'var J=[];'
+        + 'document.querySelectorAll("article").forEach(function(a){'
+        +   'var l=a.querySelector("a[href*=\\"/vis-job/\\"],a[href*=\\"/jobannonce/\\"]");'
+        +   'if(!l)return;'
+        +   'var t=l.textContent.trim().replace(/\\s+/g," ");'
+        +   'var co=(a.querySelector("[class*=\\"company\\"],[class*=\\"employer\\"]")||{textContent:""}).textContent.trim();'
+        +   'var lo=(a.querySelector("[class*=\\"location\\"],[class*=\\"area\\"],[class*=\\"region\\"]")||{textContent:""}).textContent.trim();'
+        +   'var de=(a.querySelector("[class*=\\"description\\"],[class*=\\"snippet\\"],[class*=\\"teaser\\"]")||{textContent:""}).textContent.trim().slice(0,500);'
+        +   'if(t)J.push({title:t,company:co,location:lo,url:l.href,description:de});'
+        + '});'
+        + 'if(!J.length){'
+        +   'document.querySelectorAll("a[href*=\\"/vis-job/\\"],a[href*=\\"/jobannonce/\\"]").forEach(function(a){'
+        +     'var t=a.textContent.trim().replace(/\\s+/g," ");'
+        +     'if(t.length>2)J.push({title:t,company:"",location:"",url:a.href,description:""});'
+        +   '});'
+        + '}'
+        + 'var S={};J=J.filter(function(j){var k=j.url||j.title;if(S[k])return false;S[k]=1;return true;});'
+        + 'if(!J.length){alert("Ingen jobs fundet p\\xE5 denne side.");return;}'
+        + 'var n=document.createElement("div");'
+        + 'n.style.cssText="position:fixed;top:20px;right:20px;z-index:2147483647;background:#1e40af;color:#fff;padding:16px 24px;border-radius:10px;font:bold 14px/1.5 sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.4);max-width:320px";'
+        + 'n.textContent="\\u23F3 JobHunter: Sender "+J.length+" jobs\\u2026";'
+        + 'document.body.appendChild(n);'
+        + 'fetch(H+"?_route=import_jobs",{'
+        +   'method:"POST",'
+        +   'headers:{"Content-Type":"application/json"},'
+        +   'body:JSON.stringify({token:T,jobs:J})'
+        + '}).then(function(r){return r.json();})'
+        + '.then(function(d){'
+        +   'n.style.background=d.ok?"#166534":"#991b1b";'
+        +   'n.textContent=d.ok?"\\u2705 JobHunter: "+(d.imported||J.length)+" nye jobs gemt!":"\\u274C JobHunter: "+(d.error||"Fejl");'
+        +   'setTimeout(function(){n.remove();},5000);'
+        + '}).catch(function(e){'
+        +   'n.style.background="#991b1b";'
+        +   'n.textContent="\\u274C JobHunter: "+e.message;'
+        +   'setTimeout(function(){n.remove();},7000);'
+        + '});'
+        + '})();';
+    return 'javascript:' + encodeURIComponent(code);
+}
+
 function setupSettings() {
     // Populate settings fields once settings are loaded
     refreshSettingsUI();
+
+    // ── Bookmarklet ───────────────────────────────────────────────────────
+    (async () => {
+        try {
+            const d = await apiFetch('/api/auth/scrape-token');
+            updateBookmarkletUI(d.token);
+        } catch { /* non-critical */ }
+    })();
+
+    document.getElementById('regenerateTokenBtn')?.addEventListener('click', async () => {
+        if (!confirm('Forny din scraper-nøgle?\n\nDet eksisterende bogmærke vil holde op med at virke – du skal opdatere det med den nye knap.')) return;
+        try {
+            const d = await apiFetch('/api/auth/scrape-token', { method: 'POST' });
+            updateBookmarkletUI(d.token);
+            toast('Scraper-nøgle fornyet – træk den nye knap til bogmærkelinjen');
+        } catch (err) { toast('Fejl: ' + err.message); }
+    });
 
     // ChatGPT API Key
     document.getElementById('toggleApiKeyVisibility').addEventListener('click', () => {
@@ -578,6 +650,20 @@ function refreshSettingsUI() {
         document.getElementById('profileInput').value   = desc[0] || '';
         document.getElementById('keywordsInput').value  = desc.slice(1).join('\n');
     }
+}
+
+function updateBookmarkletUI(token) {
+    const loadingEl = document.getElementById('bookmarkletLoading');
+    const readyEl   = document.getElementById('bookmarkletReady');
+    const linkEl    = document.getElementById('bookmarkletLink');
+    const previewEl = document.getElementById('tokenPreview');
+    if (!linkEl) return;
+
+    const routerUrl = getApiRouterUrl();
+    linkEl.href = generateBookmarkletUrl(token, routerUrl);
+    if (previewEl) previewEl.textContent = 'Nøgle: ' + token.slice(0, 8) + '…';
+    if (loadingEl) loadingEl.style.display = 'none';
+    if (readyEl)   readyEl.style.display   = 'block';
 }
 
 // ── Utilities ─────────────────────────────────────────────────────────────

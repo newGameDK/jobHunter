@@ -82,6 +82,7 @@ CREATE TABLE IF NOT EXISTS scraped_pool (
 $migrations = [
     "ALTER TABLE jobs ADD COLUMN gpt_analysis TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE user_settings ADD COLUMN last_url TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE users ADD COLUMN scrape_token TEXT NOT NULL DEFAULT ''",
 ];
 foreach ($migrations as $m) {
     try { $db->exec($m); } catch (Exception $e) { /* column already exists */ }

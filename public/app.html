@@ -104,15 +104,16 @@
           <span id="scraperStatusText">Tjekker lokal scraper…</span>
         </div>
         <div id="scraperOfflineInfo" class="scraper-offline-info" style="display:none">
-          <p><strong>Lokal scraper er ikke aktiv.</strong> For at søge jobs skal du installere og starte den lokale helper-app på din PC:</p>
+          <p><strong>Lokal Python-scraper er ikke aktiv.</strong></p>
+          <p>Brug i stedet <strong>Bogmærke-scraperen</strong> – ingen installation krævet:</p>
           <ol>
-            <li>Gå til <button class="btn-link" id="gotoDownloadBtn">Indstillinger → Download lokal scraper</button> og download alle filer til din PC</li>
-            <li>Kør <code>install.py</code> og vælg en installationsmappe (kræver Python 3.8+)</li>
-            <li>Dobbeltklik på <code>start.bat</code> (Windows) eller kør <code>./start.sh</code> (Mac/Linux)</li>
-            <li>Vend tilbage hertil og klik <strong>Tjek igen</strong></li>
+            <li>Gå til <a href="https://www.jobindex.dk" target="_blank" rel="noopener">jobindex.dk</a> og søg efter jobs som normalt</li>
+            <li>Klik på <strong>JobHunter Scraper</strong>-bogmærket i din browser</li>
+            <li>Vend tilbage hertil og åbn <strong>Mine jobs</strong> – dine jobs er klar</li>
           </ol>
-          <button class="btn btn-secondary btn-sm" id="recheckScraperBtn">Tjek igen</button>
-          <p class="note">Scraperens port kan ændres under <strong>Indstillinger → Lokal scraper</strong>.</p>
+          <p class="note">Har du ikke bogmærket endnu? <button class="btn-link" id="gotoDownloadBtn">Gå til Indstillinger → Bogmærke-scraper</button>.</p>
+          <hr style="border:none;border-top:1px solid var(--border);margin:12px 0">
+          <p class="note">Kører du Python-scraperen? <button class="btn btn-secondary btn-sm" id="recheckScraperBtn">Tjek igen</button></p>
         </div>
       </div>
 
@@ -215,42 +216,74 @@
           <button class="btn btn-primary" id="saveProfileBtn">Gem profil</button>
         </div>
 
-        <!-- Download local scraper -->
+        <!-- Bookmarklet scraper (no installation needed) -->
         <div class="settings-card">
-          <h3>Download lokal scraper</h3>
-          <p class="settings-desc">Download og installer helper-appen på din PC for at kunne søge jobs på jobindex.dk. Kræver Python 3.8+.</p>
-          <ol class="download-steps">
-            <li>Download alle filer herunder til en mappe på din PC</li>
-            <li>Kør <code>install.py</code> og vælg en installationsmappe</li>
-            <li>Dobbeltklik på <code>start.bat</code> (Windows) eller <code>start.sh</code> (Mac/Linux) for at starte</li>
-          </ol>
-          <div class="download-list">
-            <a class="download-item" href="downloads/install.py" download>
-              <span class="download-icon">📦</span>
-              <span class="download-name">install.py</span>
-              <span class="download-desc">GUI-installer – kør denne først</span>
-            </a>
-            <a class="download-item" href="downloads/helper.py" download>
-              <span class="download-icon">🔍</span>
-              <span class="download-name">helper.py</span>
-              <span class="download-desc">Selve scraper-scriptet</span>
-            </a>
-            <a class="download-item" href="downloads/requirements.txt" download>
-              <span class="download-icon">📄</span>
-              <span class="download-name">requirements.txt</span>
-              <span class="download-desc">Python-afhængigheder</span>
-            </a>
-            <a class="download-item" href="downloads/start.bat" download>
-              <span class="download-icon">🪟</span>
-              <span class="download-name">start.bat</span>
-              <span class="download-desc">Starter scraperen – Windows</span>
-            </a>
-            <a class="download-item" href="downloads/start.sh" download>
-              <span class="download-icon">🐧</span>
-              <span class="download-name">start.sh</span>
-              <span class="download-desc">Starter scraperen – Mac / Linux</span>
-            </a>
+          <h3>🔖 Bogmærke-scraper <span class="badge-recommended">Anbefalet</span></h3>
+          <p class="settings-desc">Ingen installation nødvendig! Træk knappen til din bogmærkelinje, og klik på den mens du er på en jobindex.dk søgeside – jobs sendes direkte til din konto.</p>
+
+          <div id="bookmarkletLoading" class="hint">Henter scraper-token…</div>
+
+          <div id="bookmarkletReady" style="display:none">
+            <div class="bookmarklet-drag-area">
+              <a id="bookmarkletLink" class="bookmarklet-btn" href="#"
+                 onclick="return false;" draggable="true"
+                 title="Træk til bogmærkelinje">
+                🔍 JobHunter Scraper
+              </a>
+              <p class="hint">👆 Træk denne knap til din browser-bogmærkelinje</p>
+            </div>
+            <ol class="download-steps">
+              <li>Træk knappen ovenfor til din browser-bogmærkelinje (eller højreklik → Tilføj bogmærke)</li>
+              <li>Gå til <a href="https://www.jobindex.dk" target="_blank" rel="noopener">jobindex.dk</a> og søg efter jobs</li>
+              <li>Klik på <strong>JobHunter Scraper</strong>-bogmærket – en grøn bekræftelse dukker op</li>
+              <li>Vend tilbage hertil og gå til <strong>Mine jobs</strong> for at se de importerede jobs</li>
+            </ol>
+            <div class="bookmarklet-token-row">
+              <span class="hint" id="tokenPreview"></span>
+              <button class="btn btn-secondary btn-sm" id="regenerateTokenBtn">Forny nøgle</button>
+            </div>
           </div>
+        </div>
+
+        <!-- Download local scraper (advanced / Python) -->
+        <div class="settings-card">
+          <h3>⚙️ Python-scraper <span class="badge-advanced">Avanceret</span></h3>
+          <p class="settings-desc">Alternativ til bogmærke-scraperen. Kræver Python 3.8+ installeret på din PC.</p>
+          <details>
+            <summary class="btn-link" style="cursor:pointer">Vis download-muligheder</summary>
+            <ol class="download-steps" style="margin-top:12px">
+              <li>Download alle filer herunder til en mappe på din PC</li>
+              <li>Kør <code>install.py</code> og vælg en installationsmappe</li>
+              <li>Dobbeltklik på <code>start.bat</code> (Windows) eller <code>start.sh</code> (Mac/Linux) for at starte</li>
+            </ol>
+            <div class="download-list">
+              <a class="download-item" href="downloads/install.py" download>
+                <span class="download-icon">📦</span>
+                <span class="download-name">install.py</span>
+                <span class="download-desc">GUI-installer – kør denne først</span>
+              </a>
+              <a class="download-item" href="downloads/helper.py" download>
+                <span class="download-icon">🔍</span>
+                <span class="download-name">helper.py</span>
+                <span class="download-desc">Selve scraper-scriptet</span>
+              </a>
+              <a class="download-item" href="downloads/requirements.txt" download>
+                <span class="download-icon">📄</span>
+                <span class="download-name">requirements.txt</span>
+                <span class="download-desc">Python-afhængigheder</span>
+              </a>
+              <a class="download-item" href="downloads/start.bat" download>
+                <span class="download-icon">🪟</span>
+                <span class="download-name">start.bat</span>
+                <span class="download-desc">Starter scraperen – Windows</span>
+              </a>
+              <a class="download-item" href="downloads/start.sh" download>
+                <span class="download-icon">🐧</span>
+                <span class="download-name">start.sh</span>
+                <span class="download-desc">Starter scraperen – Mac / Linux</span>
+              </a>
+            </div>
+          </details>
         </div>
 
         <!-- Local scraper URL -->
