@@ -104,16 +104,15 @@
           <span id="scraperStatusText">Tjekker lokal scraper…</span>
         </div>
         <div id="scraperOfflineInfo" class="scraper-offline-info" style="display:none">
-          <p><strong>Lokal scraper er ikke aktiv.</strong> For at søge jobs skal du starte den lokale helper-app på din PC:</p>
+          <p><strong>Lokal scraper er ikke aktiv.</strong> For at søge jobs skal du installere og starte den lokale helper-app på din PC:</p>
           <ol>
-            <li>Sørg for Python 3.8+ er installeret</li>
-            <li>Åbn en terminal i <code>local_scraper/</code> mappen</li>
-            <li>Installer afhængigheder: <code>pip install -r requirements.txt</code></li>
-            <li>Start scraper: <code>python helper.py</code></li>
+            <li>Download scraper-filerne via <strong>Indstillinger → Download lokal scraper</strong> herunder</li>
+            <li>Kør <code>install.py</code> og vælg en installationsmappe (kræver Python 3.8+)</li>
+            <li>Dobbeltklik på <code>start.bat</code> (Windows) eller kør <code>./start.sh</code> (Mac/Linux)</li>
             <li>Klik <strong>Tjek igen</strong> herunder</li>
           </ol>
           <button class="btn btn-secondary btn-sm" id="recheckScraperBtn">Tjek igen</button>
-          <p class="note">Scraperens port kan ændres i <code>js/config.js</code> (LOCAL_SCRAPER_URL).</p>
+          <p class="note">Scraperens port kan ændres under <strong>Indstillinger → Lokal scraper</strong>.</p>
         </div>
       </div>
 
@@ -214,6 +213,44 @@
             <textarea id="keywordsInput" rows="4" placeholder="Python&#10;JavaScript&#10;Remote&#10;Fuld-tid"></textarea>
           </div>
           <button class="btn btn-primary" id="saveProfileBtn">Gem profil</button>
+        </div>
+
+        <!-- Download local scraper -->
+        <div class="settings-card">
+          <h3>Download lokal scraper</h3>
+          <p class="settings-desc">Download og installer helper-appen på din PC for at kunne søge jobs på jobindex.dk. Kræver Python 3.8+.</p>
+          <ol class="download-steps">
+            <li>Download alle filer herunder til en mappe på din PC</li>
+            <li>Kør <code>install.py</code> og vælg en installationsmappe</li>
+            <li>Dobbeltklik på <code>start.bat</code> (Windows) eller <code>start.sh</code> (Mac/Linux) for at starte</li>
+          </ol>
+          <div class="download-list">
+            <a class="download-item" href="downloads/install.py" download>
+              <span class="download-icon">📦</span>
+              <span class="download-name">install.py</span>
+              <span class="download-desc">GUI-installer – kør denne først</span>
+            </a>
+            <a class="download-item" href="downloads/helper.py" download>
+              <span class="download-icon">🔍</span>
+              <span class="download-name">helper.py</span>
+              <span class="download-desc">Selve scraper-scriptet</span>
+            </a>
+            <a class="download-item" href="downloads/requirements.txt" download>
+              <span class="download-icon">📄</span>
+              <span class="download-name">requirements.txt</span>
+              <span class="download-desc">Python-afhængigheder</span>
+            </a>
+            <a class="download-item" href="downloads/start.bat" download>
+              <span class="download-icon">🪟</span>
+              <span class="download-name">start.bat</span>
+              <span class="download-desc">Starter scraperen – Windows</span>
+            </a>
+            <a class="download-item" href="downloads/start.sh" download>
+              <span class="download-icon">🐧</span>
+              <span class="download-name">start.sh</span>
+              <span class="download-desc">Starter scraperen – Mac / Linux</span>
+            </a>
+          </div>
         </div>
 
         <!-- Local scraper URL -->
