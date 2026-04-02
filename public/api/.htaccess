@@ -1,0 +1,12 @@
+# Block direct directory browsing of the api/ folder.
+# Clean-URL rewrite rules are not needed when PHP_ROUTER = true (default).
+# Uncomment the block below only if you set PHP_ROUTER = false in js/config.js
+# AND your host supports mod_rewrite in .htaccess files.
+#
+# <IfModule mod_rewrite.c>
+#   RewriteEngine On
+#   RewriteCond %{REQUEST_FILENAME} !-f
+#   RewriteRule ^(.*)$ router.php?_route=$1 [QSA,L]
+# </IfModule>
+
+Options -Indexes
