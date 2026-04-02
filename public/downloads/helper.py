@@ -199,15 +199,20 @@ def deduplicate(jobs: list) -> list:
     return result
 
 
-def scrape_jobindex(url: str, max_pages: int = 3) -> Tuple[List[dict], List[str]]:
+def scrape_jobindex(url: str) -> Tuple[List[dict], List[str]]:
     """
-    Fetch up to max_pages pages from jobindex.dk and return (jobs, errors).
+    Fetch all pages from jobindex.dk and return (jobs, errors).
+    Scraping continues automatically until a page returns no results.
     All HTTP traffic goes directly from this machine to jobindex.dk.
     """
     all_jobs: list = []
     errors:   list = []
+    page = 1
 
-    for page in range(1, max_pages + 1):
+    while True:
+        if page > 1:
+            time.sleep(1)  # Polite delay between pages
+
         if page == 1:
             page_url = url
         else:
@@ -222,12 +227,10 @@ def scrape_jobindex(url: str, max_pages: int = 3) -> Tuple[List[dict], List[str]
 
         jobs = parse_with_bs4(html, page_url) if _USE_REQUESTS else parse_with_regex(html)
         if not jobs:
-            break  # No more results on this page
+            break  # No more results — stop
 
         all_jobs.extend(jobs)
-
-        if page < max_pages:
-            time.sleep(1)  # Polite delay between pages
+        page += 1
 
     return deduplicate(all_jobs), errors
 
@@ -275,7 +278,6 @@ class Handler(BaseHTTPRequestHandler):
             return
 
         url       = body.get('url', '').strip()
-        max_pages = min(int(body.get('max_pages', 3)), 5)
 
         if not url:
             self._json({'error': 'url is required'}, 400)
@@ -284,9 +286,9 @@ class Handler(BaseHTTPRequestHandler):
             self._json({'error': 'Only jobindex.dk URLs are allowed'}, 400)
             return
 
-        print(f'[JobHunter]  Scraping: {url}  (max {max_pages} pages)')
+        print(f'[JobHunter]  Scraping: {url}  (alle sider)')
         try:
-            jobs, errors = scrape_jobindex(url, max_pages)
+            jobs, errors = scrape_jobindex(url)
         except Exception as e:
             self._json({'error': str(e)}, 500)
             return
