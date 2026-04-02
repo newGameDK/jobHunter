@@ -211,8 +211,7 @@ async function checkLocalScraper() {
 }
 
 async function doScrape() {
-    const url      = document.getElementById('searchUrl').value.trim();
-    const maxPages = parseInt(document.getElementById('maxPages').value, 10);
+    const url = document.getElementById('searchUrl').value.trim();
 
     if (!url) { toast('Indtast en Jobindex søge-URL'); return; }
     if (!/^https?:\/\/(?:www\.)?jobindex\.dk\//i.test(url)) {
@@ -229,18 +228,18 @@ async function doScrape() {
     const progText = document.getElementById('scrapeProgressText');
     btn.disabled   = true;
     progress.style.display = 'flex';
-    progText.textContent   = `Side 1 af ${maxPages}…`;
+    progText.textContent   = 'Henter jobs…';
 
     document.getElementById('searchResultsHeader').style.display = 'none';
     document.getElementById('searchResults').innerHTML = '';
     searchResults = [];
 
     try {
-        progText.textContent = `Henter jobs (op til ${maxPages} sider)…`;
+        progText.textContent = 'Henter jobs fra alle sider…';
         const res  = await fetch(scraperUrl + '/scrape', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ url, max_pages: maxPages }),
+            body: JSON.stringify({ url }),
         });
         const data = await res.json();
 
