@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>JobHunter</title>
+  <link rel="stylesheet" href="css/style.css?v=1.0.0">
+  <script>if(localStorage.getItem('jh-dark-mode')==='true')document.documentElement.classList.add('dark-mode');</script>
+</head>
+<body class="app-page">
+
+  <!-- Sidebar -->
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <svg width="32" height="32" viewBox="0 0 48 48" fill="none">
+        <rect width="48" height="48" rx="10" fill="#2563eb"/>
+        <circle cx="20" cy="20" r="8" stroke="white" stroke-width="3" fill="none"/>
+        <line x1="26" y1="26" x2="36" y2="36" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <span class="sidebar-title">JobHunter</span>
+    </div>
+
+    <ul class="sidebar-nav">
+      <li class="nav-item active" data-panel="dashboard">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 10a8 8 0 1 1 16 0A8 8 0 0 1 2 10zm8-5a1 1 0 0 1 1 1v3.586l2.707 2.707a1 1 0 0 1-1.414 1.414l-3-3A1 1 0 0 1 9 10V6a1 1 0 0 1 1-1z"/></svg>
+        Dashboard
+      </li>
+      <li class="nav-item" data-panel="search">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8 4a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM2 8a6 6 0 1 1 10.89 3.476l4.817 4.817a1 1 0 0 1-1.414 1.414l-4.816-4.816A6 6 0 0 1 2 8z" clip-rule="evenodd"/></svg>
+        Søg jobs
+      </li>
+      <li class="nav-item" data-panel="jobs">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 0 0 0 2h2a1 1 0 1 0 0-2H9z"/><path fill-rule="evenodd" d="M4 5a2 2 0 0 1 2-2 3 3 0 0 0 3 3h2a3 3 0 0 0 3-3 2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5zm3 4a1 1 0 0 0 0 2h.01a1 1 0 1 0 0-2H7zm3 0a1 1 0 0 0 0 2h3a1 1 0 1 0 0-2h-3zm-3 4a1 1 0 0 0 0 2h.01a1 1 0 1 0 0-2H7zm3 0a1 1 0 0 0 0 2h3a1 1 0 1 0 0-2h-3z" clip-rule="evenodd"/></svg>
+        Mine jobs
+        <span class="nav-badge" id="jobsBadge" style="display:none"></span>
+      </li>
+      <li class="nav-item" data-panel="settings">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 0 1-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 0 1 .947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 0 1 2.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 0 1 2.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 0 1 .947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 0 1-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 0 1-2.287-.947zM10 13a3 3 0 1 0 0-6 3 3 0 0 0 0 6z" clip-rule="evenodd"/></svg>
+        Indstillinger
+      </li>
+    </ul>
+
+    <div class="sidebar-footer">
+      <button class="btn-dark-toggle" id="darkToggle" title="Skift tema">
+        <svg id="darkIcon" viewBox="0 0 20 20" fill="currentColor"><path d="M17.293 13.293A8 8 0 0 1 6.707 2.707a8.001 8.001 0 1 0 10.586 10.586z"/></svg>
+      </button>
+      <div class="sidebar-user">
+        <span id="userName"></span>
+        <button class="btn-logout" id="logoutBtn" title="Log ud">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 1 0 0-2H4V5h7a1 1 0 1 0 0-2H3zm12.293 4.293a1 1 0 0 1 1.414 1.414L14.414 11H10a1 1 0 1 0 0 2h4.414l2.293 2.293a1 1 0 0 1-1.414 1.414l-4-4a1 1 0 0 1 0-1.414l4-4z" clip-rule="evenodd"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main content -->
+  <main class="main-content">
+
+    <!-- ── Dashboard ───────────────────────────────────────────────── -->
+    <section id="panel-dashboard" class="panel active">
+      <div class="panel-header">
+        <h2>Dashboard</h2>
+      </div>
+      <div class="stats-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="stat-number" id="statTotal">–</div>
+          <div class="stat-label">Gemte jobs i alt</div>
+        </div>
+        <div class="stat-card stat-new">
+          <div class="stat-number" id="statNew">–</div>
+          <div class="stat-label">Nye</div>
+        </div>
+        <div class="stat-card stat-saved">
+          <div class="stat-number" id="statSaved">–</div>
+          <div class="stat-label">Favoritter</div>
+        </div>
+        <div class="stat-card stat-applied">
+          <div class="stat-number" id="statApplied">–</div>
+          <div class="stat-label">Ansøgt</div>
+        </div>
+        <div class="stat-card stat-rejected">
+          <div class="stat-number" id="statRejected">–</div>
+          <div class="stat-label">Afvist</div>
+        </div>
+      </div>
+
+      <div class="dashboard-recent">
+        <h3>Seneste jobs</h3>
+        <div id="recentJobs" class="recent-list"></div>
+      </div>
+    </section>
+
+    <!-- ── Search ──────────────────────────────────────────────────── -->
+    <section id="panel-search" class="panel">
+      <div class="panel-header">
+        <h2>Søg jobs</h2>
+      </div>
+
+      <!-- Local scraper status -->
+      <div class="scraper-status-card" id="scraperStatusCard">
+        <div class="scraper-indicator" id="scraperIndicator">
+          <span class="dot dot-checking"></span>
+          <span id="scraperStatusText">Tjekker lokal scraper…</span>
+        </div>
+        <div id="scraperOfflineInfo" class="scraper-offline-info" style="display:none">
+          <p><strong>Lokal scraper er ikke aktiv.</strong> For at søge jobs skal du starte den lokale helper-app på din PC:</p>
+          <ol>
+            <li>Sørg for Python 3.8+ er installeret</li>
+            <li>Åbn en terminal i <code>local_scraper/</code> mappen</li>
+            <li>Installer afhængigheder: <code>pip install -r requirements.txt</code></li>
+            <li>Start scraper: <code>python helper.py</code></li>
+            <li>Klik <strong>Tjek igen</strong> herunder</li>
+          </ol>
+          <button class="btn btn-secondary btn-sm" id="recheckScraperBtn">Tjek igen</button>
+          <p class="note">Scraperens port kan ændres i <code>js/config.js</code> (LOCAL_SCRAPER_URL).</p>
+        </div>
+      </div>
+
+      <!-- Search form -->
+      <div class="search-form-card">
+        <label for="searchUrl">Jobindex søge-URL</label>
+        <div class="search-row">
+          <input type="url" id="searchUrl" placeholder="https://www.jobindex.dk/jobsoegning?q=..." autocomplete="off">
+          <select id="maxPages" title="Antal sider">
+            <option value="1">1 side</option>
+            <option value="2">2 sider</option>
+            <option value="3" selected>3 sider</option>
+            <option value="4">4 sider</option>
+            <option value="5">5 sider</option>
+          </select>
+          <button class="btn btn-primary" id="scrapeBtn" disabled>Hent jobs</button>
+        </div>
+        <p class="hint">Åbn jobindex.dk i din browser, søg som du ønsker, kopiér URL'en og indsæt den her.</p>
+      </div>
+
+      <!-- Progress bar -->
+      <div id="scrapeProgress" class="progress-bar-wrap" style="display:none">
+        <div class="progress-bar-inner" id="scrapeProgressBar"></div>
+        <span id="scrapeProgressText">Henter…</span>
+      </div>
+
+      <!-- Results -->
+      <div id="searchResultsHeader" class="results-header" style="display:none">
+        <span id="resultsCount"></span>
+        <button class="btn btn-secondary btn-sm" id="importAllBtn">Gem alle til Min konto</button>
+      </div>
+      <div id="searchResults" class="results-grid"></div>
+    </section>
+
+    <!-- ── My Jobs ─────────────────────────────────────────────────── -->
+    <section id="panel-jobs" class="panel">
+      <div class="panel-header">
+        <h2>Mine jobs</h2>
+        <div class="panel-actions">
+          <input type="search" id="jobsFilter" placeholder="Filtrer…" class="filter-input">
+        </div>
+      </div>
+      <div class="kanban-board" id="kanbanBoard">
+        <div class="kanban-col" data-status="new">
+          <div class="kanban-col-header"><span class="kanban-col-title">Nye</span><span class="kanban-col-count" id="countNew">0</span></div>
+          <div class="kanban-cards" id="colNew"></div>
+        </div>
+        <div class="kanban-col" data-status="saved">
+          <div class="kanban-col-header"><span class="kanban-col-title">Favoritter</span><span class="kanban-col-count" id="countSaved">0</span></div>
+          <div class="kanban-cards" id="colSaved"></div>
+        </div>
+        <div class="kanban-col" data-status="applied">
+          <div class="kanban-col-header"><span class="kanban-col-title">Ansøgt</span><span class="kanban-col-count" id="countApplied">0</span></div>
+          <div class="kanban-cards" id="colApplied"></div>
+        </div>
+        <div class="kanban-col" data-status="rejected">
+          <div class="kanban-col-header"><span class="kanban-col-title">Afvist</span><span class="kanban-col-count" id="countRejected">0</span></div>
+          <div class="kanban-cards" id="colRejected"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Settings ────────────────────────────────────────────────── -->
+    <section id="panel-settings" class="panel">
+      <div class="panel-header">
+        <h2>Indstillinger</h2>
+      </div>
+
+      <div class="settings-grid">
+        <!-- ChatGPT API Key -->
+        <div class="settings-card">
+          <h3>ChatGPT API-nøgle</h3>
+          <p class="settings-desc">Bruges til at analysere jobopslag med AI. Nøglen gemmes krypteret og forlader aldrig din konto.</p>
+          <div class="form-group">
+            <label for="apiKeyInput">API-nøgle</label>
+            <div class="api-key-row">
+              <input type="password" id="apiKeyInput" placeholder="sk-..." autocomplete="off">
+              <button class="btn btn-secondary btn-sm" id="toggleApiKeyVisibility" type="button">Vis</button>
+            </div>
+            <div class="api-key-status" id="apiKeyStatus"></div>
+          </div>
+          <div class="settings-actions">
+            <button class="btn btn-primary" id="saveApiKeyBtn">Gem nøgle</button>
+            <button class="btn btn-danger btn-sm" id="clearApiKeyBtn" style="display:none">Fjern nøgle</button>
+          </div>
+        </div>
+
+        <!-- Search Descriptions / Profile -->
+        <div class="settings-card">
+          <h3>Søgeprofil</h3>
+          <p class="settings-desc">Beskriv dig selv, dine kompetencer og hvad du søger. Bruges af AI-analysen til at vurdere jobmatch.</p>
+          <div class="form-group">
+            <label for="profileInput">Din profil / søgekriterier</label>
+            <textarea id="profileInput" rows="6" placeholder="Eks: Erfaren softwareudvikler med 5 års erfaring i Python og JavaScript. Søger fuld-tid i København eller remote. Interesseret i startup-miljøer og produktudvikling."></textarea>
+          </div>
+          <div class="form-group">
+            <label for="keywordsInput">Nøgleord (ét pr. linje)</label>
+            <textarea id="keywordsInput" rows="4" placeholder="Python&#10;JavaScript&#10;Remote&#10;Fuld-tid"></textarea>
+          </div>
+          <button class="btn btn-primary" id="saveProfileBtn">Gem profil</button>
+        </div>
+
+        <!-- Local scraper URL -->
+        <div class="settings-card">
+          <h3>Lokal scraper</h3>
+          <p class="settings-desc">Adressen på din lokale JobHunter-scraper. Ændr kun dette hvis du kører den på en anden port.</p>
+          <div class="form-group">
+            <label for="scraperUrlInput">Scraper URL</label>
+            <input type="url" id="scraperUrlInput" value="http://localhost:7474">
+          </div>
+          <button class="btn btn-secondary" id="saveScraperUrlBtn">Gem og test</button>
+          <span id="scraperTestResult" class="settings-test-result"></span>
+        </div>
+      </div>
+
+      <div id="settingsSaveMsg" class="save-msg" style="display:none"></div>
+    </section>
+
+  </main>
+
+  <!-- Job detail modal -->
+  <div id="jobModal" class="modal-overlay" style="display:none" role="dialog" aria-modal="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div>
+          <h2 id="modalTitle"></h2>
+          <p id="modalCompany" class="modal-company"></p>
+        </div>
+        <button class="modal-close" id="modalClose" aria-label="Luk">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-meta">
+          <span id="modalLocation" class="modal-meta-item"></span>
+          <a id="modalUrl" href="#" target="_blank" rel="noopener" class="modal-meta-item modal-link">Åbn jobopslag ↗</a>
+        </div>
+        <div class="modal-description" id="modalDescription"></div>
+
+        <div class="modal-status-row">
+          <label>Status:</label>
+          <select id="modalStatus">
+            <option value="new">Ny</option>
+            <option value="saved">Favorit</option>
+            <option value="applied">Ansøgt</option>
+            <option value="rejected">Afvist</option>
+          </select>
+        </div>
+
+        <div class="modal-analysis" id="modalAnalysis">
+          <div class="analysis-header">
+            <h3>AI-analyse</h3>
+            <button class="btn btn-secondary btn-sm" id="analyzeBtn">Analysér med ChatGPT</button>
+          </div>
+          <div id="analysisContent" class="analysis-content"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger btn-sm" id="deleteJobBtn">Slet job</button>
+        <button class="btn btn-primary" id="saveJobBtn">Gem ændringer</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/config.js?v=1.0.0"></script>
+  <script src="js/app.js?v=1.0.0"></script>
+</body>
+</html>

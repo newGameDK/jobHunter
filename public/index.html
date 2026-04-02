@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>JobHunter – Login</title>
+  <link rel="stylesheet" href="css/style.css?v=1.0.0">
+  <script>if(localStorage.getItem('jh-dark-mode')==='true')document.documentElement.classList.add('dark-mode');</script>
+</head>
+<body class="auth-page">
+  <div class="auth-container">
+    <div class="auth-logo">
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="48" height="48" rx="12" fill="#2563eb"/>
+        <circle cx="20" cy="20" r="8" stroke="white" stroke-width="3" fill="none"/>
+        <line x1="26" y1="26" x2="36" y2="36" stroke="white" stroke-width="3" stroke-linecap="round"/>
+      </svg>
+      <h1>JobHunter</h1>
+      <p class="auth-tagline">Find dit næste job smartere</p>
+    </div>
+
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login">Log ind</button>
+      <button class="auth-tab" data-tab="register">Opret konto</button>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" class="auth-form active">
+      <div class="form-group">
+        <label for="loginUsername">Brugernavn</label>
+        <input type="text" id="loginUsername" placeholder="Indtast brugernavn" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="loginPassword">Adgangskode</label>
+        <input type="password" id="loginPassword" placeholder="Indtast adgangskode" required autocomplete="current-password">
+      </div>
+      <div id="loginError" class="error-msg"></div>
+      <button type="submit" class="btn btn-primary btn-full">Log ind</button>
+    </form>
+
+    <!-- Register Form -->
+    <form id="registerForm" class="auth-form">
+      <div class="form-group">
+        <label for="regUsername">Brugernavn</label>
+        <input type="text" id="regUsername" placeholder="Vælg et brugernavn" required autocomplete="username">
+      </div>
+      <div class="form-group">
+        <label for="regEmail">E-mail</label>
+        <input type="email" id="regEmail" placeholder="Indtast e-mail" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="regPassword">Adgangskode</label>
+        <input type="password" id="regPassword" placeholder="Mindst 6 tegn" required autocomplete="new-password">
+      </div>
+      <div id="registerError" class="error-msg"></div>
+      <button type="submit" class="btn btn-primary btn-full">Opret konto</button>
+    </form>
+
+    <div class="auth-version" id="authVersion"></div>
+  </div>
+
+  <script src="js/config.js?v=1.0.0"></script>
+  <script src="js/auth.js?v=1.0.0"></script>
+</body>
+</html>

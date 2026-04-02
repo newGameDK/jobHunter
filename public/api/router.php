@@ -248,88 +248,44 @@ if ($route === 'jobs/delete' && $method === 'POST') {
     json_ok();
 }
 
-// ── Scrape jobindex.dk ────────────────────────────────────────────────────
-if ($route === 'scrape' && $method === 'POST') {
+// ── Import jobs (sent from the user's local scraper or browser) ────────────
+// The server NEVER scrapes jobindex.dk directly. All scraping happens on the
+// user's own PC via the local companion app (local_scraper/helper.py).
+// This endpoint only receives already-parsed job data and stores it.
+if ($route === 'import_jobs' && $method === 'POST') {
     $user = require_auth($db);
+    $b    = body();
+    $jobs = $b['jobs'] ?? [];
 
-    if (!extension_loaded('curl')) json_err('cURL extension is not available on this server', 503);
+    if (!is_array($jobs)) json_err('jobs must be an array');
+    if (count($jobs) > 200) json_err('Too many jobs in one import (max 200)');
 
-    $b       = body();
-    $baseUrl = trim($b['url'] ?? '');
-    $maxPages = min((int)($b['max_pages'] ?? 3), 5);
+    $imported = 0;
+    $skipped  = 0;
 
-    if (!$baseUrl) json_err('URL is required');
-    if (!preg_match('#^https?://(?:www\.)?jobindex\.dk/#i', $baseUrl)) {
-        json_err('Only jobindex.dk URLs are allowed');
+    foreach ($jobs as $j) {
+        $title   = substr(trim($j['title']       ?? ''), 0, 500);
+        $company = substr(trim($j['company']      ?? ''), 0, 200);
+        $loc     = substr(trim($j['location']     ?? ''), 0, 200);
+        $url     = substr(trim($j['url']          ?? ''), 0, 2000);
+        $desc    = substr(trim($j['description']  ?? ''), 0, 5000);
+
+        if (!$title && !$url) { $skipped++; continue; }
+
+        // Skip if the same URL already exists for this user
+        if ($url) {
+            $exists = $db->prepare('SELECT id FROM jobs WHERE user_id = ? AND url = ?');
+            $exists->execute([$user['id'], $url]);
+            if ($exists->fetch()) { $skipped++; continue; }
+        }
+
+        $id = uuid_v4();
+        $db->prepare('INSERT INTO jobs (id, user_id, title, company, location, url, description, status, found_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)')
+           ->execute([$id, $user['id'], $title, $company, $loc, $url, $desc, 'new', now_ms(), now_ms()]);
+        $imported++;
     }
 
-    // Save last_url for the user
-    ensure_settings_row($db, $user['id']);
-    $db->prepare('UPDATE user_settings SET last_url = ?, updated_at = ? WHERE user_id = ?')
-       ->execute([$baseUrl, now_ms(), $user['id']]);
-
-    $allJobs = [];
-    $errors  = [];
-
-    for ($page = 1; $page <= $maxPages; $page++) {
-        // Build paged URL: append &page=N or &PageIndex=N depending on what is already there
-        if ($page === 1) {
-            $pageUrl = $baseUrl;
-        } else {
-            $sep = (strpos($baseUrl, '?') !== false) ? '&' : '?';
-            $pageUrl = $baseUrl . $sep . 'page=' . $page;
-        }
-
-        $ch = curl_init();
-        curl_setopt_array($ch, [
-            CURLOPT_URL            => $pageUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_MAXREDIRS      => 5,
-            CURLOPT_TIMEOUT        => 20,
-            CURLOPT_USERAGENT      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-            CURLOPT_HTTPHEADER     => [
-                'Accept-Language: da,da-DK;q=0.9,en;q=0.8',
-                'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            ],
-            // Deliberately no Referer header so jobindex cannot see the origin domain
-            CURLOPT_SSL_VERIFYPEER => true,
-            CURLOPT_ENCODING       => 'gzip, deflate',
-        ]);
-        $html   = curl_exec($ch);
-        $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-        $err    = curl_error($ch);
-        curl_close($ch);
-
-        if ($err || !$html) {
-            $errors[] = 'Page ' . $page . ': ' . ($err ?: 'empty response');
-            break;
-        }
-        if ($status !== 200) {
-            $errors[] = 'Page ' . $page . ': HTTP ' . $status;
-            break;
-        }
-
-        $jobs = parse_jobindex_html($html, $pageUrl);
-        if (empty($jobs)) break; // No more results
-
-        $allJobs = array_merge($allJobs, $jobs);
-
-        if ($page < $maxPages) sleep(1); // Polite delay between pages
-    }
-
-    // Deduplicate by URL
-    $seen = [];
-    $deduped = [];
-    foreach ($allJobs as $j) {
-        $key = $j['url'] ?: $j['title'] . '|' . $j['company'];
-        if (!isset($seen[$key])) {
-            $seen[$key] = true;
-            $deduped[]  = $j;
-        }
-    }
-
-    json_ok(['jobs' => $deduped, 'errors' => $errors, 'total' => count($deduped)]);
+    json_ok(['imported' => $imported, 'skipped' => $skipped]);
 }
 
 // ── Analyze with ChatGPT ──────────────────────────────────────────────────
@@ -411,137 +367,3 @@ if ($route === 'analyze' && $method === 'POST') {
 
 // ── 404 ────────────────────────────────────────────────────────────────────
 json_err('Unknown route: ' . $route, 404);
-
-// =========================================================================
-// Scraping helpers
-// =========================================================================
-
-/**
- * Parse a jobindex.dk search results page and return an array of job objects.
- */
-function parse_jobindex_html($html, $pageUrl) {
-    // Silence XML/HTML parse errors
-    $prev = libxml_use_internal_errors(true);
-    $doc  = new DOMDocument();
-    $doc->loadHTML('<?xml encoding="UTF-8">' . $html, LIBXML_NOWARNING | LIBXML_NOERROR);
-    libxml_clear_errors();
-    libxml_use_internal_errors($prev);
-
-    $xpath = new DOMXPath($doc);
-    $jobs  = [];
-
-    // Base URL for resolving relative hrefs
-    $parsed  = parse_url($pageUrl);
-    $baseUrl = $parsed['scheme'] . '://' . $parsed['host'];
-
-    // ── Strategy 1: articles with class containing "PaidJob" or "jix_robotjob" ──
-    $articles = $xpath->query('//article[contains(@class,"PaidJob") or contains(@class,"jix_robotjob") or contains(@class,"job_ad")]');
-
-    foreach ($articles as $article) {
-        $job = extract_job_from_node($xpath, $article, $baseUrl);
-        if ($job) $jobs[] = $job;
-    }
-
-    // ── Strategy 2: fallback – look for <h4>/<h3> inside job-listing divs ──
-    if (empty($jobs)) {
-        $containers = $xpath->query('//*[contains(@class,"jix-toolbar") or contains(@class,"job-listing") or contains(@class,"result")]');
-        foreach ($containers as $node) {
-            $job = extract_job_from_node($xpath, $node, $baseUrl);
-            if ($job) $jobs[] = $job;
-        }
-    }
-
-    // ── Strategy 3: any <a> with href matching jobdetail pattern ──
-    if (empty($jobs)) {
-        $links = $xpath->query('//a[contains(@href,"vis-job") or contains(@href,"jobannonce/sign")]');
-        foreach ($links as $link) {
-            $href  = $link->getAttribute('href');
-            $url   = resolve_url($href, $baseUrl);
-            $title = trim($link->textContent);
-            if ($title && $url) {
-                $jobs[] = [
-                    'id'          => '',
-                    'title'       => $title,
-                    'company'     => '',
-                    'location'    => '',
-                    'url'         => $url,
-                    'description' => '',
-                ];
-            }
-        }
-    }
-
-    return $jobs;
-}
-
-function extract_job_from_node($xpath, $node, $baseUrl) {
-    // Title: first <h4> or <h3> or .jobtitle link
-    $titleNode = $xpath->query('.//h4//a | .//h3//a | .//*[contains(@class,"jobtitle")]', $node)->item(0);
-    if (!$titleNode) {
-        $titleNode = $xpath->query('.//h4 | .//h3', $node)->item(0);
-    }
-    $title = $titleNode ? trim($titleNode->textContent) : '';
-
-    // URL from the title anchor
-    $href = '';
-    if ($titleNode && $titleNode->nodeName === 'a') {
-        $href = $titleNode->getAttribute('href');
-    }
-    if (!$href) {
-        $linkNode = $xpath->query('.//a[contains(@href,"vis-job") or contains(@href,"jobannonce/sign")]', $node)->item(0);
-        if ($linkNode) $href = $linkNode->getAttribute('href');
-    }
-    $url = $href ? resolve_url($href, $baseUrl) : '';
-
-    if (!$title && !$url) return null;
-
-    // Company: look for common patterns
-    $companySelectors = [
-        './/*[contains(@class,"company") or contains(@class,"employer") or contains(@class,"companyName")]',
-        './/*[@itemprop="name"]',
-        './/strong',
-    ];
-    $company = '';
-    foreach ($companySelectors as $sel) {
-        $n = $xpath->query($sel, $node)->item(0);
-        if ($n) { $company = trim($n->textContent); break; }
-    }
-
-    // Location
-    $locSelectors = [
-        './/*[contains(@class,"location") or contains(@class,"area") or contains(@class,"region")]',
-        './/*[@itemprop="addressLocality"]',
-    ];
-    $location = '';
-    foreach ($locSelectors as $sel) {
-        $n = $xpath->query($sel, $node)->item(0);
-        if ($n) { $location = trim($n->textContent); break; }
-    }
-
-    // Short description
-    $descNode = $xpath->query('.//*[contains(@class,"description") or contains(@class,"snippet") or contains(@class,"teaser")]', $node)->item(0);
-    $description = $descNode ? trim($descNode->textContent) : '';
-
-    // Clean up whitespace
-    $title       = preg_replace('/\s+/', ' ', $title);
-    $company     = preg_replace('/\s+/', ' ', $company);
-    $location    = preg_replace('/\s+/', ' ', $location);
-    $description = preg_replace('/\s+/', ' ', substr($description, 0, 500));
-
-    return [
-        'id'          => '',
-        'title'       => $title,
-        'company'     => $company,
-        'location'    => $location,
-        'url'         => $url,
-        'description' => $description,
-    ];
-}
-
-function resolve_url($href, $baseUrl) {
-    if (!$href) return '';
-    if (preg_match('#^https?://#', $href)) return $href;
-    if (str_starts_with($href, '//')) return 'https:' . $href;
-    if (str_starts_with($href, '/')) return rtrim($baseUrl, '/') . $href;
-    return rtrim($baseUrl, '/') . '/' . $href;
-}

@@ -7,13 +7,19 @@
 // API_BASE: '.' = relative to current page (works on PHP shared hosting)
 // PHP_ROUTER: true = calls api/router.php?_route=... directly (recommended
 //             for shared hosting where mod_rewrite may be unavailable)
+//
+// LOCAL_SCRAPER_URL: address of the local companion scraper running on the
+//             user's own PC. All jobindex.dk traffic goes through this app,
+//             never through the hosted server.
+//             Default port is 7474. Change here if you use a different port.
 // ==========================================================================
 
-const API_BASE   = '.';
-const PHP_ROUTER = true;
+const API_BASE          = '.';
+const PHP_ROUTER        = true;
+const LOCAL_SCRAPER_URL = 'http://localhost:7474';
 
 /**
- * Build the URL for an API call.
+ * Build the URL for a hosted API call.
  * @param {string} path  e.g. '/api/auth/login' or '/api/jobs?status=new'
  * @returns {string}     Full URL ready for fetch()
  */

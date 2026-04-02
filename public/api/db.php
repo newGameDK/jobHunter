@@ -5,7 +5,7 @@
 
 $DATA_DIR = __DIR__ . '/data';
 if (!is_dir($DATA_DIR)) {
-    mkdir($DATA_DIR, 0755, true);
+    mkdir($DATA_DIR, 0750, true);
 }
 
 if (!extension_loaded('pdo_sqlite')) {
