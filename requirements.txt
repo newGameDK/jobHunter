@@ -1,0 +1,7 @@
+requests
+beautifulsoup4
+openai
+
+# Optional but recommended:
+# python-dotenv   # loads .env file automatically
+# tiktoken        # accurate token counting for model selection

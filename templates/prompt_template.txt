@@ -1,0 +1,25 @@
+You are a helpful career assistant. Below is a CV and a list of job listings. For each job, rate how well it matches the candidate on a scale from 0 to 100, where:
+
+- 0-20: Poor match (missing required skills, wrong field, or undesirable conditions)
+- 21-40: Weak match (some overlap but significant gaps)
+- 41-60: Moderate match (relevant field, some skills match)
+- 61-80: Good match (most requirements align with candidate's background)
+- 81-100: Excellent match (strong alignment in skills, experience, and preferences)
+
+Consider the following when rating:
+- Technical skills overlap
+- Seniority level fit
+- Industry relevance
+- Location/remote preferences
+- Role responsibilities vs. candidate background
+
+Return your answer as a JSON array where each element has:
+- "id": the job id
+- "score": integer 0-100
+- "reason": one sentence explanation
+
+CV:
+{cv}
+
+Job listings:
+{job_list_prompt}

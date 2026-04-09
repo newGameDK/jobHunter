@@ -1,0 +1,32 @@
+Hi! I'm a software developer with a passion for building useful tools and automating repetitive tasks.
+
+## Skills
+
+- **Languages:** Python, JavaScript, TypeScript, Bash
+- **Frameworks:** React, Node.js, FastAPI, Flask
+- **Tools:** Git, Docker, VS Code, Linux
+- **Data:** SQL, JSON, REST APIs
+
+## Experience
+
+I enjoy working on projects that combine automation, data processing, and user-friendly interfaces. I have experience with web scraping, API integrations, and building small desktop applications.
+
+## Preferences
+
+- I'm open to both remote and on-site positions
+- Interested in full-stack, back-end, or data engineering roles
+- Prefer agile teams and modern tech stacks
+- Happy to learn new tools and frameworks as needed
+
+## Education
+
+Bachelor's degree in computer science or related field (replace with your own details).
+
+## Languages
+
+- English (fluent)
+- Danish (conversational)
+
+---
+
+*Replace this file with your actual CV content before running the evaluator.*
