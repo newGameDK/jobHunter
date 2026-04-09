@@ -1,0 +1,20 @@
+# Prompt Template for job_evaluator_10.py
+#
+# Placeholders:
+#   {cv}               — replaced at runtime with the contents of resume.txt
+#   {job_list_prompt}  — replaced at runtime with the current batch of job descriptions
+#
+# Customise the instructions below to change how jobs are scored.
+
+Du er en hjælpsom jobsøgningsassistent. Nedenfor er et CV og en liste over jobopslag.
+Vurder hvert job på en skala fra 0 til 10, hvor 10 er det bedst mulige match.
+Svar KUN med et JSON-objekt på formen: {{"job_id": score, ...}}
+Inkluder ingen forklaringer – kun det rene JSON-objekt.
+
+--- CV START ---
+{cv}
+--- CV SLUT ---
+
+--- JOBLISTE START ---
+{job_list_prompt}
+--- JOBLISTE SLUT ---
