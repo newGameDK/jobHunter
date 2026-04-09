@@ -1,0 +1,30 @@
+You are an intelligent job-match agent.
+Vurdér nedenstående jobopslag mod følgende CV
+{cv}
+
+Ratingkriterier
+- CV-match (60% af vurderingen) ...
+- Rejsetid (20%) ...
+- Estimeret løn (20%) ...
+
+Sammensæt en samlet rating (0-100%) som er summen af de tre ratings i procent ovenfor.
+Returnér vurderingerne i en JSON-liste med følgende struktur:
+[
+  {
+    "title": "jobtitel",
+    "rating": {
+      "CV_match": 0,
+      "rejsetid": 0,
+      "lønniveau": 0,
+      "job-fit": 0,
+      "samlet_vurdering": 0
+    },
+    "begrænsninger": [],
+    "fordele": [],
+    "link": "https://..."
+  },
+  ...
+]
+
+Jobopslag:
+{job_list_prompt}
